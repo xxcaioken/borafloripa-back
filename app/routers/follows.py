@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app import models, schemas
 from app.database import get_db
@@ -13,7 +13,12 @@ def list_followed_venues(
     current_user: models.User = Depends(_require_auth),
     db: Session = Depends(get_db),
 ):
-    return current_user.followed_venues
+    return (
+        db.query(models.Venue)
+        .join(models.user_followed_venues, models.user_followed_venues.c.venue_id == models.Venue.id)
+        .filter(models.user_followed_venues.c.user_id == current_user.id)
+        .all()
+    )
 
 
 @router.post("/venues/{venue_id}")
