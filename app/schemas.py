@@ -156,6 +156,7 @@ class VibeTag(BaseModel):
 
 class CheckinCreate(BaseModel):
     venue_id: int
+    session_id: str = ""
 
 
 class HotVenue(BaseModel):

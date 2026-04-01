@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List
 from app import models, schemas
 from app.database import get_db
+from app.rate_limiter import bora_rate_limit
 
 router = APIRouter(prefix="/api/bora", tags=["bora"])
 
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/api/bora", tags=["bora"])
 @router.post("/{event_id}", response_model=schemas.BoraReactionOut)
 def toggle_bora(
     event_id: int,
-    session_id: str = Query(..., description="ID anônimo do browser"),
+    session_id: str = Depends(bora_rate_limit),
     db: Session = Depends(get_db),
 ):
     existing = db.query(models.BoraReaction).filter(

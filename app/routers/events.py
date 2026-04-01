@@ -64,10 +64,14 @@ def get_feed(
     open_now: bool = False,
     accessible: bool = False,
     temporary: bool = False,
+    limit: int = 20,
+    offset: int = 0,
     db: Session = Depends(get_db),
 ):
     if category and category not in VALID_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Categoria inválida. Use: {', '.join(VALID_CATEGORIES)}")
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="limit deve estar entre 1 e 100")
 
     query = (
         db.query(models.Event)
@@ -89,10 +93,14 @@ def get_feed(
     if accessible:
         query = query.filter(models.Venue.wheelchair == True)
 
-    events = query.order_by(models.Event.is_featured.desc(), models.Event.date.asc()).all()
+    query = query.order_by(models.Event.is_featured.desc(), models.Event.date.asc())
 
+    # open_now requires Python-side filtering, so paginate after
     if open_now:
-        events = [e for e in events if _is_open_now(e.venue.hours)]
+        events = [e for e in query.all() if _is_open_now(e.venue.hours)]
+        events = events[offset: offset + limit]
+    else:
+        events = query.offset(offset).limit(limit).all()
 
     venue_ids = list({e.venue_id for e in events})
     counts = _get_checkin_counts(db, venue_ids)

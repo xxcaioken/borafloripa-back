@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import List
 from app import models, schemas
 from app.database import get_db
+from app.rate_limiter import checkin_rate_limit
 
 router = APIRouter(prefix="/api/checkins", tags=["checkins"])
 
@@ -13,6 +14,8 @@ HOT_WINDOW_MINUTES = 60
 
 @router.post("", status_code=201)
 def checkin(payload: schemas.CheckinCreate, db: Session = Depends(get_db)):
+    if payload.session_id:
+        checkin_rate_limit(payload.venue_id, payload.session_id)
     venue = db.query(models.Venue).filter(models.Venue.id == payload.venue_id).first()
     if not venue:
         from fastapi import HTTPException
