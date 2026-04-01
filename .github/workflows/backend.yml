@@ -12,15 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies to .packages
+        run: pip install -r requirements.txt --target .packages
+
       - name: Package app
         run: |
           zip -r deploy.zip . \
+            --exclude ".git/*" \
             --exclude "venv/*" \
             --exclude "*.db" \
             --exclude "__pycache__/*" \
             --exclude "*.pyc" \
-            --exclude ".env" \
-            --exclude ".git/*"
+            --exclude ".env"
 
       - name: Azure Login
         uses: azure/login@v2
@@ -41,4 +48,4 @@ jobs:
           az webapp config set \
             --name bora-floripa-api \
             --resource-group rg-borafloripa \
-            --startup-file "gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000 --timeout 120"
+            --startup-file "bash /home/site/wwwroot/startup.sh"
