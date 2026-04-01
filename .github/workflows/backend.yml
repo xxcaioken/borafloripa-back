@@ -12,18 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies to .packages
-        run: pip install -r requirements.txt --target .packages
-
-      - name: Package app
+      - name: Package source
         run: |
           zip -r deploy.zip . \
             --exclude ".git/*" \
             --exclude "venv/*" \
+            --exclude ".packages/*" \
             --exclude "*.db" \
             --exclude "__pycache__/*" \
             --exclude "*.pyc" \
@@ -34,14 +28,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy to Azure App Service
+      - name: Deploy (with remote Oryx build)
         run: |
           az webapp deploy \
             --name bora-floripa-api \
             --resource-group rg-borafloripa \
             --src-path deploy.zip \
-            --type zip \
-            --restart true
+            --build-remote true \
+            --restart true \
+            --timeout 1800
 
       - name: Set startup command
         run: |
