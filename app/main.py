@@ -18,6 +18,8 @@ def _ensure_indexes():
         "CREATE INDEX IF NOT EXISTS ix_bora_event_session ON bora_reactions (event_id, session_id)",
         "CREATE INDEX IF NOT EXISTS ix_events_featured_date ON events (is_featured DESC, date ASC)",
         "CREATE INDEX IF NOT EXISTS ix_events_venue_id ON events (venue_id)",
+        "CREATE INDEX IF NOT EXISTS ix_user_followed_venues_user ON user_followed_venues (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_user_saved_events_user ON user_saved_events (user_id)",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts:
