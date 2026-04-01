@@ -262,12 +262,28 @@ def get_tourist_events(
 
 
 @router.get("/{event_id}", response_model=schemas.EventOut)
-def get_event(event_id: int, db: Session = Depends(get_db)):
+def get_event(
+    event_id: int,
+    session_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
-    event.view_count = (event.view_count or 0) + 1
-    db.commit()
+
+    # Deduplicate view counts by session_id (one view per session per event)
+    from app.rate_limiter import _check as _rate_check, HTTPException as _RL_HTTPException
+    count_view = True
+    if session_id:
+        try:
+            _rate_check(f"view:{session_id}:{event_id}", max_calls=1, window=3600)
+        except Exception:
+            count_view = False
+
+    if count_view:
+        event.view_count = (event.view_count or 0) + 1
+        db.commit()
+
     counts = _get_checkin_counts(db, [event.venue_id])
     out = schemas.EventOut.model_validate(event)
     out.venue.checkin_count = counts.get(event.venue_id, 0)
