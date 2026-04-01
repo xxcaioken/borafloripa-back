@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text as sa_text
 from app import models, database
 from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes
 from app.routers.auth import hash_password
@@ -8,6 +9,26 @@ from datetime import datetime, timedelta
 import json
 
 models.Base.metadata.create_all(bind=database.engine)
+
+
+def _ensure_indexes():
+    """Create performance indexes idempotently (safe to run on already-populated DBs)."""
+    stmts = [
+        "CREATE INDEX IF NOT EXISTS ix_checkins_venue_created ON checkins (venue_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_bora_event_session ON bora_reactions (event_id, session_id)",
+        "CREATE INDEX IF NOT EXISTS ix_events_featured_date ON events (is_featured DESC, date ASC)",
+        "CREATE INDEX IF NOT EXISTS ix_events_venue_id ON events (venue_id)",
+    ]
+    with database.engine.connect() as conn:
+        for stmt in stmts:
+            try:
+                conn.execute(sa_text(stmt))
+            except Exception:
+                pass  # index may already exist under a different name
+        conn.commit()
+
+
+_ensure_indexes()
 
 app = FastAPI(title="Bora Floripa API")
 
