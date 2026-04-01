@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text as sa_text
 from app import models, database
-from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes
+from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes, follows
 from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
@@ -51,6 +51,7 @@ app.include_router(communities.router)
 app.include_router(bora.router)
 app.include_router(saved.router)
 app.include_router(vibes.router)
+app.include_router(follows.router)
 
 @app.on_event("startup")
 def seed():
