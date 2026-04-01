@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -40,8 +40,11 @@ def toggle_bora(
 def bora_counts(
     event_ids: str = Query(..., description="IDs separados por vírgula"),
     session_id: str = Query(..., description="ID anônimo do browser"),
+    response: Response = None,
     db: Session = Depends(get_db),
 ):
+    if response:
+        response.headers["Cache-Control"] = "private, max-age=15"
     """Retorna {event_id: {count, reacted}} para uma lista de eventos."""
     ids = [int(i) for i in event_ids.split(",") if i.strip().isdigit()]
     if not ids:
