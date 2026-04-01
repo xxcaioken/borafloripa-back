@@ -117,6 +117,33 @@ def update_event(
     return event
 
 
+VALID_VIBES = {"Normal", "Animado", "Lotado", "Quente 🔥"}
+
+
+@router.patch("/events/{event_id}/vibe")
+def update_vibe(
+    event_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user=Depends(_require_auth),
+):
+    vibe = payload.get("vibe_status", "")
+    if vibe not in VALID_VIBES:
+        raise HTTPException(status_code=400, detail=f"Vibe inválida. Use: {', '.join(VALID_VIBES)}")
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado")
+    venue = db.query(models.Venue).filter(
+        models.Venue.id == event.venue_id,
+        models.Venue.owner_id == current_user.id,
+    ).first()
+    if not venue:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    event.vibe_status = vibe
+    db.commit()
+    return {"vibe_status": vibe}
+
+
 @router.patch("/events/{event_id}/feature")
 def toggle_feature(
     event_id: int,
