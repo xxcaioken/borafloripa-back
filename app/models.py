@@ -22,6 +22,12 @@ user_saved_events = Table(
     Column('event_id', Integer, ForeignKey('events.id'))
 )
 
+user_followed_venues = Table(
+    'user_followed_venues', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('venue_id', Integer, ForeignKey('venues.id'))
+)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -36,6 +42,7 @@ class User(Base):
     venues = relationship("Venue", back_populates="owner")
     communities = relationship("Community", secondary=community_members, back_populates="members")
     saved_events = relationship("Event", secondary=user_saved_events)
+    followed_venues = relationship("Venue", secondary=user_followed_venues)
 
 class Venue(Base):
     __tablename__ = "venues"
