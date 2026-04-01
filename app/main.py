@@ -1,7 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app import models, database
-from app.routers import events, partners, auth, checkins, communities, bora
+from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes
 from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
@@ -10,9 +11,13 @@ models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Bora Floripa API")
 
+# Em produção, definir ALLOWED_ORIGINS como CSV (ex: "https://bora.azurestaticapps.net")
+_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -23,6 +28,8 @@ app.include_router(partners.router)
 app.include_router(checkins.router)
 app.include_router(communities.router)
 app.include_router(bora.router)
+app.include_router(saved.router)
+app.include_router(vibes.router)
 
 @app.on_event("startup")
 def seed():

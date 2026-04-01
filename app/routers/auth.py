@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -9,7 +10,7 @@ from app.database import get_db
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-SECRET_KEY = "bora-floripa-secret-dev-2026"
+SECRET_KEY = os.getenv("SECRET_KEY", "bora-floripa-secret-dev-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 dias
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from app import models, schemas
 from app.database import get_db
@@ -73,6 +74,7 @@ def create_event(
         category=payload.category,
         is_temporary=payload.is_temporary,
         organizers=payload.organizers,
+        price_info=payload.price_info,
         tags=tags,
     )
     db.add(event)
@@ -106,6 +108,7 @@ def update_event(
     event.category = payload.category
     event.is_temporary = payload.is_temporary
     event.organizers = payload.organizers
+    event.price_info = payload.price_info
     event.tags = db.query(models.Tag).filter(models.Tag.id.in_(payload.tag_ids)).all()
     db.commit()
     db.refresh(event)
@@ -132,6 +135,36 @@ def delete_event(
     db.delete(event)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/analytics", response_model=List[schemas.EventAnalytics])
+def get_analytics(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    venues = db.query(models.Venue).filter(models.Venue.owner_id == current_user.id).all()
+    venue_ids = [v.id for v in venues]
+    if not venue_ids:
+        return []
+    events = db.query(models.Event).filter(models.Event.venue_id.in_(venue_ids)).all()
+    bora_counts = dict(
+        db.query(models.BoraReaction.event_id, func.count(models.BoraReaction.id))
+        .filter(models.BoraReaction.event_id.in_([e.id for e in events]))
+        .group_by(models.BoraReaction.event_id)
+        .all()
+    )
+    return [
+        schemas.EventAnalytics(
+            event_id=e.id,
+            title=e.title,
+            date=e.date,
+            view_count=e.view_count or 0,
+            bora_count=bora_counts.get(e.id, 0),
+        )
+        for e in events
+    ]
 
 
 @router.post("/claim-venue/{venue_id}", response_model=schemas.VenueOut)

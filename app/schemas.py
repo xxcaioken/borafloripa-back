@@ -45,6 +45,8 @@ class EventOut(BaseModel):
     is_temporary: bool
     organizers: Optional[str]
     cover_url: Optional[str] = None
+    price_info: Optional[str] = None
+    view_count: int = 0
     venue: VenueOut
     tags: List[TagOut]
     class Config:
@@ -61,6 +63,7 @@ class EventCreate(BaseModel):
     category: str = "bar"
     is_temporary: bool = False
     organizers: Optional[str] = None
+    price_info: Optional[str] = None
     tag_ids: List[int] = []
 
 
@@ -78,6 +81,16 @@ class VenueCreate(BaseModel):
     visual_aid: bool = False
     adapted_wc: bool = False
     parking: bool = False
+
+
+class EventAnalytics(BaseModel):
+    event_id: int
+    title: str
+    date: datetime
+    view_count: int
+    bora_count: int
+    class Config:
+        from_attributes = True
 
 
 class PartnerStats(BaseModel):
@@ -133,6 +146,12 @@ class CommunityOut(BaseModel):
     is_member: bool = False
     class Config:
         from_attributes = True
+
+
+class VibeTag(BaseModel):
+    tag_name: str
+    count: int
+    voted: bool = False
 
 
 class CheckinCreate(BaseModel):

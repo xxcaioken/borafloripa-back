@@ -16,6 +16,12 @@ community_members = Table(
     Column('user_id', Integer, ForeignKey('users.id'))
 )
 
+user_saved_events = Table(
+    'user_saved_events', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('event_id', Integer, ForeignKey('events.id'))
+)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -29,6 +35,7 @@ class User(Base):
 
     venues = relationship("Venue", back_populates="owner")
     communities = relationship("Community", secondary=community_members, back_populates="members")
+    saved_events = relationship("Event", secondary=user_saved_events)
 
 class Venue(Base):
     __tablename__ = "venues"
@@ -70,6 +77,8 @@ class Event(Base):
     is_temporary = Column(Boolean, default=False)
     organizers = Column(String)  # JSON: ["Bar A","Bar B"] para eventos multi-parceiro
     cover_url = Column(String)   # #8 foto de capa do evento
+    price_info = Column(String)  # ex: "Entrada: R$25 / Open bar: R$60"
+    view_count = Column(Integer, default=0)  # contador de visualizações do detalhe
 
     venue = relationship("Venue", back_populates="events")
     tags = relationship("Tag", secondary=event_tags_association, back_populates="events")
@@ -99,6 +108,15 @@ class BoraReaction(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     session_id = Column(String, nullable=False)  # fingerprint anônimo do browser
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class VenueVibeVote(Base):
+    """Voto de usuário em uma tag de vibe para um venue — 'A galera diz que é...'"""
+    __tablename__ = "venue_vibe_votes"
+    id = Column(Integer, primary_key=True, index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
+    tag_name = Column(String, nullable=False, index=True)
+    session_id = Column(String, nullable=False)  # anônimo ou user_id como string
 
 
 class Community(Base):

@@ -188,11 +188,59 @@ def get_tags_full(db: Session = Depends(get_db)):
     return db.query(models.Tag).order_by(models.Tag.name).all()
 
 
+@router.get("/tourist", response_model=List[schemas.EventOut])
+def get_tourist_events(
+    date_from: str,
+    date_to: str,
+    period: Optional[str] = None,  # "manha" | "tarde" | "noite" | None (all day)
+    city: str = "Florianópolis",
+    db: Session = Depends(get_db),
+):
+    """Retorna eventos para o roteiro do turista por período e intervalo de datas."""
+    PERIOD_HOURS = {
+        "manha": (6, 12),
+        "tarde": (12, 18),
+        "noite": (18, 24),
+    }
+    try:
+        dt_from = datetime.fromisoformat(date_from)
+        dt_to = datetime.fromisoformat(date_to) + timedelta(days=1)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD.")
+
+    query = (
+        db.query(models.Event)
+        .join(models.Venue)
+        .filter(
+            models.Venue.city == city,
+            models.Event.date >= dt_from,
+            models.Event.date < dt_to,
+        )
+        .order_by(models.Event.date)
+    )
+    events = query.all()
+
+    if period and period in PERIOD_HOURS:
+        h_start, h_end = PERIOD_HOURS[period]
+        events = [e for e in events if h_start <= e.date.hour < h_end]
+
+    venue_ids = list({e.venue_id for e in events})
+    counts = _get_checkin_counts(db, venue_ids)
+    result = []
+    for event in events:
+        out = schemas.EventOut.model_validate(event)
+        out.venue.checkin_count = counts.get(event.venue_id, 0)
+        result.append(out)
+    return result
+
+
 @router.get("/{event_id}", response_model=schemas.EventOut)
 def get_event(event_id: int, db: Session = Depends(get_db)):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
+    event.view_count = (event.view_count or 0) + 1
+    db.commit()
     counts = _get_checkin_counts(db, [event.venue_id])
     out = schemas.EventOut.model_validate(event)
     out.venue.checkin_count = counts.get(event.venue_id, 0)
