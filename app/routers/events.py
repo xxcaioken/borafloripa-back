@@ -143,15 +143,19 @@ def get_venues(
 
 
 @router.get("/new-venues", response_model=List[schemas.VenueOut])
-def get_new_venues(city: str = "Florianópolis", db: Session = Depends(get_db)):
+def get_new_venues(city: str = "Florianópolis", response: Response = None, db: Session = Depends(get_db)):
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=300"
     return db.query(models.Venue).filter(
         models.Venue.city == city, models.Venue.is_new == True
     ).all()
 
 
 @router.get("/map")
-def get_map_events(city: str = "Florianópolis", db: Session = Depends(get_db)):
+def get_map_events(city: str = "Florianópolis", response: Response = None, db: Session = Depends(get_db)):
     """Returns venues with their upcoming events and checkin counts for the map view."""
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=120"
     from datetime import date as date_cls
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     week_end = today_start + timedelta(days=7)
