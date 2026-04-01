@@ -117,6 +117,26 @@ def update_event(
     return event
 
 
+@router.patch("/events/{event_id}/feature")
+def toggle_feature(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(_require_auth),
+):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado")
+    venue = db.query(models.Venue).filter(
+        models.Venue.id == event.venue_id,
+        models.Venue.owner_id == current_user.id,
+    ).first()
+    if not venue:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    event.is_featured = not event.is_featured
+    db.commit()
+    return {"is_featured": event.is_featured}
+
+
 @router.delete("/events/{event_id}")
 def delete_event(
     event_id: int,
