@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
@@ -113,7 +113,8 @@ def get_feed(
 
 
 @router.get("/categories")
-def get_categories():
+def get_categories(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     return [
         {"id": "rua",       "label": "Rolê na Rua", "emoji": "🌆"},
         {"id": "bar",       "label": "Barzinho",    "emoji": "🍺"},
@@ -194,12 +195,14 @@ def get_map_events(city: str = "Florianópolis", db: Session = Depends(get_db)):
 
 
 @router.get("/tags")
-def get_tags(db: Session = Depends(get_db)):
+def get_tags(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     return [t.name for t in db.query(models.Tag).all()]
 
 
 @router.get("/tags-full", response_model=List[schemas.TagOut])
-def get_tags_full(db: Session = Depends(get_db)):
+def get_tags_full(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     return db.query(models.Tag).order_by(models.Tag.name).all()
 
 
