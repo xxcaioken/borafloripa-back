@@ -203,6 +203,43 @@ def get_map_events(city: str = "Florianópolis", response: Response = None, db: 
     return result
 
 
+@router.get("/trending", response_model=List[schemas.EventOut])
+def get_trending(
+    city: str = "Florianópolis",
+    limit: int = 5,
+    db: Session = Depends(get_db),
+):
+    """Events with most Bora reactions in the last 24 hours."""
+    from datetime import date as _date
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    bora_counts = dict(
+        db.query(models.BoraReaction.event_id, func.count(models.BoraReaction.id).label("cnt"))
+        .filter(models.BoraReaction.created_at >= cutoff)
+        .group_by(models.BoraReaction.event_id)
+        .order_by(func.count(models.BoraReaction.id).desc())
+        .limit(limit * 2)
+        .all()
+    )
+    if not bora_counts:
+        return []
+    events = (
+        db.query(models.Event)
+        .join(models.Venue)
+        .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
+        .filter(models.Event.id.in_(bora_counts.keys()), models.Venue.city == city)
+        .all()
+    )
+    events.sort(key=lambda e: bora_counts.get(e.id, 0), reverse=True)
+    venue_ids = list({e.venue_id for e in events})
+    counts = _get_checkin_counts(db, venue_ids)
+    result = []
+    for event in events[:limit]:
+        out = schemas.EventOut.model_validate(event)
+        out.venue.checkin_count = counts.get(event.venue_id, 0)
+        result.append(out)
+    return result
+
+
 @router.get("/tags")
 def get_tags(response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "public, max-age=3600"
