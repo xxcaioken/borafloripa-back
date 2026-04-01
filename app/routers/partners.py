@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from typing import List, Optional
+from typing import List
 from app import models, schemas
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -9,19 +9,24 @@ from app.routers.auth import get_current_user
 router = APIRouter(prefix="/api/partners", tags=["partners"])
 
 
-def _require_user(current_user=Depends(get_current_user)):
+def _require_auth(current_user=Depends(get_current_user)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Não autenticado")
     return current_user
 
 
+def _owner_venue_ids(current_user, db: Session) -> list[int]:
+    return [
+        v.id for v in
+        db.query(models.Venue.id).filter(models.Venue.owner_id == current_user.id).all()
+    ]
+
+
 @router.get("/stats", response_model=schemas.PartnerStats)
 def get_stats(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
     venues = db.query(models.Venue).filter(models.Venue.owner_id == current_user.id).all()
     venue_ids = [v.id for v in venues]
     total = db.query(models.Event).filter(models.Event.venue_id.in_(venue_ids)).count() if venue_ids else 0
@@ -37,26 +42,25 @@ def get_stats(
 @router.get("/events", response_model=List[schemas.EventOut])
 def get_partner_events(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
-    venues = db.query(models.Venue).filter(models.Venue.owner_id == current_user.id).all()
-    venue_ids = [v.id for v in venues]
+    venue_ids = _owner_venue_ids(current_user, db)
     if not venue_ids:
         return []
-    return db.query(models.Event).filter(models.Event.venue_id.in_(venue_ids)).all()
+    return (
+        db.query(models.Event)
+        .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
+        .filter(models.Event.venue_id.in_(venue_ids))
+        .all()
+    )
 
 
 @router.post("/events", response_model=schemas.EventOut)
 def create_event(
     payload: schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
-    # Verify the venue belongs to the current user
     venue = db.query(models.Venue).filter(
         models.Venue.id == payload.venue_id,
         models.Venue.owner_id == current_user.id,
@@ -88,10 +92,8 @@ def update_event(
     event_id: int,
     payload: schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
@@ -119,10 +121,8 @@ def update_event(
 def delete_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
@@ -140,21 +140,19 @@ def delete_event(
 @router.get("/analytics", response_model=List[schemas.EventAnalytics])
 def get_analytics(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
-    venues = db.query(models.Venue).filter(models.Venue.owner_id == current_user.id).all()
-    venue_ids = [v.id for v in venues]
+    venue_ids = _owner_venue_ids(current_user, db)
     if not venue_ids:
         return []
     events = db.query(models.Event).filter(models.Event.venue_id.in_(venue_ids)).all()
+    event_ids = [e.id for e in events]
     bora_counts = dict(
         db.query(models.BoraReaction.event_id, func.count(models.BoraReaction.id))
-        .filter(models.BoraReaction.event_id.in_([e.id for e in events]))
+        .filter(models.BoraReaction.event_id.in_(event_ids))
         .group_by(models.BoraReaction.event_id)
         .all()
-    )
+    ) if event_ids else {}
     return [
         schemas.EventAnalytics(
             event_id=e.id,
@@ -171,15 +169,12 @@ def get_analytics(
 def claim_venue(
     venue_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    """Partner claims ownership of an existing venue (imported from OSM)."""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
     venue = db.query(models.Venue).filter(models.Venue.id == venue_id).first()
     if not venue:
         raise HTTPException(status_code=404, detail="Venue não encontrado")
-    ADMIN_ID = 1  # venues importados ficam com owner_id=1 (admin) até um parceiro reivindicar
+    ADMIN_ID = 1
     if venue.owner_id and venue.owner_id != ADMIN_ID and venue.owner_id != current_user.id:
         raise HTTPException(status_code=409, detail="Venue já tem um dono cadastrado")
     venue.owner_id = current_user.id
@@ -193,10 +188,8 @@ def update_venue(
     venue_id: int,
     payload: schemas.VenueCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(_require_auth),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Não autenticado")
     venue = db.query(models.Venue).filter(
         models.Venue.id == venue_id,
         models.Venue.owner_id == current_user.id,
