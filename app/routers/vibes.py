@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List
 from app import models, schemas
 from app.database import get_db
+from app.rate_limiter import vibe_rate_limit
 
 router = APIRouter(prefix="/api/vibes", tags=["vibes"])
 
@@ -53,7 +54,7 @@ def get_venue_vibes(
 def vote_vibe(
     venue_id: int,
     tag_name: str,
-    session_id: str = Query(...),
+    session_id: str = Depends(vibe_rate_limit),
     db: Session = Depends(get_db),
 ):
     if tag_name not in VIBE_TAGS:
