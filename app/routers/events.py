@@ -9,6 +9,7 @@ from app.database import get_db
 
 VALID_CATEGORIES = {"rua", "bar", "balada", "cultura", "temporario"}
 VALID_PERIODS = {"manha", "tarde", "noite"}
+VALID_SORTS = {"date", "popular", "featured"}
 
 HOT_WINDOW_MINUTES = 60
 
@@ -65,6 +66,7 @@ def get_feed(
     accessible: bool = False,
     temporary: bool = False,
     today: bool = False,
+    sort: Optional[str] = None,  # "date" | "popular" | "featured" (default: featured+date)
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -73,6 +75,8 @@ def get_feed(
         raise HTTPException(status_code=400, detail=f"Categoria inválida. Use: {', '.join(VALID_CATEGORIES)}")
     if limit < 1 or limit > 100:
         raise HTTPException(status_code=400, detail="limit deve estar entre 1 e 100")
+    if sort and sort not in VALID_SORTS:
+        raise HTTPException(status_code=400, detail=f"sort inválido. Use: {', '.join(VALID_SORTS)}")
 
     query = (
         db.query(models.Event)
@@ -98,7 +102,12 @@ def get_feed(
     if accessible:
         query = query.filter(models.Venue.wheelchair == True)
 
-    query = query.order_by(models.Event.is_featured.desc(), models.Event.date.asc())
+    if sort == "date":
+        query = query.order_by(models.Event.date.asc())
+    elif sort == "popular":
+        query = query.order_by(models.Event.view_count.desc(), models.Event.date.asc())
+    else:
+        query = query.order_by(models.Event.is_featured.desc(), models.Event.date.asc())
 
     # open_now requires Python-side filtering, so paginate after
     if open_now:
