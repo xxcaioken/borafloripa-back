@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -31,7 +31,9 @@ def checkin(payload: schemas.CheckinCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/hot", response_model=List[schemas.HotVenue])
-def hot_venues(city: str = "Florianópolis", db: Session = Depends(get_db)):
+def hot_venues(city: str = "Florianópolis", response: Response = None, db: Session = Depends(get_db)):
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
     cutoff = datetime.utcnow() - timedelta(minutes=HOT_WINDOW_MINUTES)
     rows = (
         db.query(models.Venue.id, models.Venue.name, func.count(models.Checkin.id).label("cnt"))
@@ -48,8 +50,10 @@ def hot_venues(city: str = "Florianópolis", db: Session = Depends(get_db)):
 
 
 @router.get("/counts")
-def checkin_counts(city: str = "Florianópolis", db: Session = Depends(get_db)):
+def checkin_counts(city: str = "Florianópolis", response: Response = None, db: Session = Depends(get_db)):
     """Retorna dict {venue_id: count} para a última hora."""
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
     cutoff = datetime.utcnow() - timedelta(minutes=HOT_WINDOW_MINUTES)
     rows = (
         db.query(models.Checkin.venue_id, func.count(models.Checkin.id).label("cnt"))
