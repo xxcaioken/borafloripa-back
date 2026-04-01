@@ -64,6 +64,7 @@ def get_feed(
     open_now: bool = False,
     accessible: bool = False,
     temporary: bool = False,
+    today: bool = False,
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -79,6 +80,10 @@ def get_feed(
         .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
         .filter(models.Venue.city == city)
     )
+    if today:
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        query = query.filter(models.Event.date >= today_start, models.Event.date < today_end)
     if category:
         query = query.filter(models.Event.category == category)
     if temporary:
