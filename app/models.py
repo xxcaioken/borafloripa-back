@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime, Table
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime, Table, Index
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -6,8 +6,8 @@ Base = declarative_base()
 
 event_tags_association = Table(
     'event_tags', Base.metadata,
-    Column('event_id', Integer, ForeignKey('events.id')),
-    Column('tag_id', Integer, ForeignKey('tags.id'))
+    Column('event_id', Integer, ForeignKey('events.id'), index=True),
+    Column('tag_id', Integer, ForeignKey('tags.id'), index=True)
 )
 
 community_members = Table(
@@ -73,12 +73,12 @@ class Venue(Base):
 class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True, index=True)
-    venue_id = Column(Integer, ForeignKey("venues.id"))
+    venue_id = Column(Integer, ForeignKey("venues.id"), index=True)
     title = Column(String, nullable=False)
     description = Column(String)
-    date = Column(DateTime, nullable=False)
+    date = Column(DateTime, nullable=False, index=True)
     vibe_status = Column(String, default="Normal")
-    is_featured = Column(Boolean, default=False)
+    is_featured = Column(Boolean, default=False, index=True)
     category = Column(String, default="bar", index=True)
     # Eventos temporários (tendas, pop-ups com múltiplos parceiros)
     is_temporary = Column(Boolean, default=False)
@@ -102,8 +102,8 @@ class Checkin(Base):
     """#11 Hot zones — check-in anônimo por local"""
     __tablename__ = "checkins"
     id = Column(Integer, primary_key=True, index=True)
-    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     venue = relationship("Venue", back_populates="checkins")
 
@@ -112,9 +112,9 @@ class BoraReaction(Base):
     """Botão 'Bora!' — intenção de presença em evento (social proof)"""
     __tablename__ = "bora_reactions"
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
-    session_id = Column(String, nullable=False)  # fingerprint anônimo do browser
-    created_at = Column(DateTime, default=datetime.utcnow)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False, index=True)
+    session_id = Column(String, nullable=False, index=True)  # fingerprint anônimo do browser
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class VenueVibeVote(Base):
@@ -136,3 +136,9 @@ class Community(Base):
     discount_code = Column(String)   # código de desconto para membros
 
     members = relationship("User", secondary=community_members, back_populates="communities")
+
+
+# Composite indexes for common query patterns
+Index('ix_bora_session_event', BoraReaction.session_id, BoraReaction.event_id, unique=True)
+Index('ix_checkin_venue_time', Checkin.venue_id, Checkin.created_at)
+Index('ix_event_featured_date', Event.is_featured, Event.date)
