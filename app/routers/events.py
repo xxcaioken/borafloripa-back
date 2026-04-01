@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
 import json
 from app import models, schemas
 from app.database import get_db
+
+VALID_CATEGORIES = {"rua", "bar", "balada", "cultura", "temporario"}
+VALID_PERIODS = {"manha", "tarde", "noite"}
 
 HOT_WINDOW_MINUTES = 60
 
@@ -63,9 +66,13 @@ def get_feed(
     temporary: bool = False,
     db: Session = Depends(get_db),
 ):
+    if category and category not in VALID_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoria inválida. Use: {', '.join(VALID_CATEGORIES)}")
+
     query = (
         db.query(models.Event)
         .join(models.Venue)
+        .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
         .filter(models.Venue.city == city)
     )
     if category:
@@ -202,11 +209,15 @@ def get_tourist_events(
         "tarde": (12, 18),
         "noite": (18, 24),
     }
+    if period and period not in VALID_PERIODS:
+        raise HTTPException(status_code=400, detail=f"Período inválido. Use: {', '.join(VALID_PERIODS)}")
     try:
         dt_from = datetime.fromisoformat(date_from)
         dt_to = datetime.fromisoformat(date_to) + timedelta(days=1)
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD.")
+    if dt_to - dt_from > timedelta(days=31):
+        raise HTTPException(status_code=400, detail="Intervalo máximo de 31 dias.")
 
     query = (
         db.query(models.Event)
