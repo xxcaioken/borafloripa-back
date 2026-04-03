@@ -306,6 +306,35 @@ def get_nearby_events(
     return result
 
 
+@router.get("/featured", response_model=List[schemas.EventOut])
+def get_featured_events(
+    city: str = "Florianópolis",
+    limit: int = 5,
+    response: Response = None,
+    db: Session = Depends(get_db),
+):
+    """Retorna eventos em destaque com cache de 2 minutos — ideal para seção hero."""
+    events = (
+        db.query(models.Event)
+        .join(models.Venue)
+        .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
+        .filter(models.Venue.city == city, models.Event.is_featured == True)
+        .order_by(models.Event.date.asc())
+        .limit(limit)
+        .all()
+    )
+    venue_ids = list({e.venue_id for e in events})
+    counts = _get_checkin_counts(db, venue_ids)
+    result = []
+    for event in events:
+        out = schemas.EventOut.model_validate(event)
+        out.venue.checkin_count = counts.get(event.venue_id, 0)
+        result.append(out)
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=120, stale-while-revalidate=240"
+    return result
+
+
 @router.get("/tags")
 def get_tags(response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "public, max-age=3600"
