@@ -56,6 +56,23 @@ app.include_router(vibes.router)
 app.include_router(follows.router)
 app.include_router(search.router)
 
+@app.get("/health")
+def health(db: database.SessionLocal = None):
+    from sqlalchemy import text as _t
+    db_ok = False
+    try:
+        with database.engine.connect() as conn:
+            conn.execute(_t("SELECT 1"))
+        db_ok = True
+    except Exception:
+        pass
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "db": "connected" if db_ok else "error",
+        "version": "1.0.0",
+    }
+
+
 @app.on_event("startup")
 def seed():
     """Cria apenas usuários de sistema e tags. Venues são importados via scripts/import_venues.py."""
