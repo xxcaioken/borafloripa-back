@@ -8,7 +8,10 @@ from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
 
-models.Base.metadata.create_all(bind=database.engine)
+try:
+    models.Base.metadata.create_all(bind=database.engine)
+except Exception as _e:
+    print(f"[startup] create_all warning: {_e}")
 
 
 def _ensure_indexes():
@@ -30,7 +33,10 @@ def _ensure_indexes():
         conn.commit()
 
 
-_ensure_indexes()
+try:
+    _ensure_indexes()
+except Exception as _idx_err:
+    print(f"[startup] _ensure_indexes skipped: {_idx_err}")
 
 app = FastAPI(title="Bora Floripa API")
 
