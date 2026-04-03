@@ -1,6 +1,13 @@
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./borafloripa.db")
 

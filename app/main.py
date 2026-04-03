@@ -64,7 +64,7 @@ app.include_router(search.router)
 app.include_router(admin.router)
 
 @app.get("/health")
-def health(db: database.SessionLocal = None):
+def health():
     from sqlalchemy import text as _t
     db_ok = False
     try:
