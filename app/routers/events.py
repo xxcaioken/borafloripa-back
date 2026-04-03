@@ -249,6 +249,63 @@ def get_trending(
     return result
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    import math
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+@router.get("/nearby", response_model=List[schemas.EventOut])
+def get_nearby_events(
+    lat: float,
+    lng: float,
+    radius_km: float = 5.0,
+    limit: int = 10,
+    response: Response = None,
+    db: Session = Depends(get_db),
+):
+    """Eventos próximos a uma coordenada, ordenados por distância."""
+    if radius_km < 0.1 or radius_km > 50:
+        raise HTTPException(status_code=400, detail="radius_km deve estar entre 0.1 e 50")
+    if limit < 1 or limit > 50:
+        raise HTTPException(status_code=400, detail="limit deve estar entre 1 e 50")
+
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    week_end = today_start + timedelta(days=7)
+
+    events = (
+        db.query(models.Event)
+        .join(models.Venue)
+        .options(joinedload(models.Event.venue), joinedload(models.Event.tags))
+        .filter(models.Event.date >= today_start, models.Event.date <= week_end)
+        .all()
+    )
+
+    with_dist = [
+        (e, _haversine_km(lat, lng, e.venue.lat, e.venue.lng))
+        for e in events
+        if e.venue.lat and e.venue.lng
+    ]
+    with_dist = [(e, d) for e, d in with_dist if d <= radius_km]
+    with_dist.sort(key=lambda x: x[1])
+
+    nearby = [e for e, _ in with_dist[:limit]]
+    venue_ids = list({e.venue_id for e in nearby})
+    counts = _get_checkin_counts(db, venue_ids)
+    result = []
+    for event in nearby:
+        out = schemas.EventOut.model_validate(event)
+        out.venue.checkin_count = counts.get(event.venue_id, 0)
+        result.append(out)
+
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=60"
+    return result
+
+
 @router.get("/tags")
 def get_tags(response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "public, max-age=3600"
