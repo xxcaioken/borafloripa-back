@@ -338,3 +338,30 @@ def get_event(
     out = schemas.EventOut.model_validate(event)
     out.venue.checkin_count = counts.get(event.venue_id, 0)
     return out
+
+
+@router.get("/{event_id}/stats")
+def get_event_stats(
+    event_id: int,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Retorna estatísticas públicas leves de um evento (views, boras, checkins)."""
+    event = db.query(models.Event.view_count, models.Event.venue_id).filter(
+        models.Event.id == event_id
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado")
+
+    bora_count = db.query(func.count(models.BoraReaction.id)).filter(
+        models.BoraReaction.event_id == event_id
+    ).scalar()
+
+    counts = _get_checkin_counts(db, [event.venue_id])
+    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
+    return {
+        "event_id": event_id,
+        "view_count": event.view_count or 0,
+        "bora_count": bora_count,
+        "checkin_count": counts.get(event.venue_id, 0),
+    }
