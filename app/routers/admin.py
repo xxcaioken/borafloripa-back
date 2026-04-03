@@ -125,6 +125,9 @@ def bulk_import_venues(
             if key in existing:
                 # Atualiza apenas campos ainda vazios (não sobrescreve dados manuais)
                 venue = existing[key]
+                if venue is None:  # inserido no mesmo lote — não há objeto para atualizar
+                    skipped += 1
+                    continue
                 changed = False
                 if not venue.hours and item.hours:
                     venue.hours = item.hours;    changed = True
@@ -161,7 +164,7 @@ def bulk_import_venues(
                     logo_url=item.logo_url,
                 ))
                 inserted += 1
-                existing[key] = True  # marca como existente para o lote atual
+                existing[key] = None  # marca como existente (sem objeto real) para o lote atual
 
         except Exception as e:
             errors.append({"name": item.name, "error": str(e)[:120]})
