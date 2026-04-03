@@ -62,6 +62,7 @@ def get_feed(
     tag: Optional[str] = None,
     q: Optional[str] = None,
     category: Optional[str] = None,
+    neighborhood: Optional[str] = None,
     open_now: bool = False,
     accessible: bool = False,
     temporary: bool = False,
@@ -101,6 +102,8 @@ def get_feed(
         )
     if accessible:
         query = query.filter(models.Venue.wheelchair == True)
+    if neighborhood:
+        query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
 
     if sort == "date":
         query = query.order_by(models.Event.date.asc())
