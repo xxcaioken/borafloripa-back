@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from typing import List
+from typing import List, Optional
+from datetime import datetime, timedelta
 from app import models, schemas
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -186,20 +187,29 @@ def delete_event(
 
 @router.get("/analytics", response_model=List[schemas.EventAnalytics])
 def get_analytics(
+    days: Optional[int] = None,  # 7 | 30 | None (all time)
     db: Session = Depends(get_db),
     current_user=Depends(_require_auth),
 ):
+    if days is not None and days not in (7, 30, 90):
+        raise HTTPException(status_code=400, detail="days deve ser 7, 30 ou 90")
     venue_ids = _owner_venue_ids(current_user, db)
     if not venue_ids:
         return []
     events = db.query(models.Event).filter(models.Event.venue_id.in_(venue_ids)).all()
     event_ids = [e.id for e in events]
-    bora_counts = dict(
+    if not event_ids:
+        return []
+
+    bora_query = (
         db.query(models.BoraReaction.event_id, func.count(models.BoraReaction.id))
         .filter(models.BoraReaction.event_id.in_(event_ids))
-        .group_by(models.BoraReaction.event_id)
-        .all()
-    ) if event_ids else {}
+    )
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        bora_query = bora_query.filter(models.BoraReaction.created_at >= cutoff)
+    bora_counts = dict(bora_query.group_by(models.BoraReaction.event_id).all())
+
     return [
         schemas.EventAnalytics(
             event_id=e.id,
