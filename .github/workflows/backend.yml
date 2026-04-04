@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +17,6 @@ jobs:
           zip -r deploy.zip . \
             --exclude ".git/*" \
             --exclude "venv/*" \
-            --exclude ".packages/*" \
             --exclude "*.db" \
             --exclude "__pycache__/*" \
             --exclude "*.pyc" \
@@ -28,18 +27,9 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set startup command
-        run: |
-          az webapp config set \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa \
-            --startup-file "bash /home/site/wwwroot/startup.sh"
-
-      - name: Deploy
-        run: |
-          az webapp deploy \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa \
-            --src-path deploy.zip \
-            --type zip \
-            --async true
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: bora-floripa-api
+          package: deploy.zip
+          startup-command: 'bash /home/site/wwwroot/startup.sh'
