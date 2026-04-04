@@ -156,7 +156,7 @@ def get_venues(
         query = query.filter(models.Venue.category == category)
     if neighborhood:
         query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
-    return query.order_by(models.Venue.checkin_count.desc(), models.Venue.name).all()
+    return query.order_by(models.Venue.name).all()
 
 
 @router.get("/new-venues", response_model=List[schemas.VenueOut])
