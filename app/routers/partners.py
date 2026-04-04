@@ -85,6 +85,20 @@ def create_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+
+    # Push notification para seguidores do venue
+    try:
+        from app.routers.follows import notify_venue_followers
+        notify_venue_followers(
+            db,
+            venue_id=payload.venue_id,
+            title=f"🎉 {event.title}",
+            body=f"Novo evento em {venue.name}",
+            url=f"/evento/{event.id}",
+        )
+    except Exception as _push_err:
+        print(f"[PUSH] notify error: {_push_err}")
+
     return event
 
 
