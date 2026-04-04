@@ -40,6 +40,7 @@ class User(Base):
     pref_vibes = Column(String)   # JSON: ["rooftop","pet-friendly",...]
     reset_token = Column(String, nullable=True, unique=True, index=True)
     reset_token_expires = Column(DateTime, nullable=True)
+    google_id = Column(String, nullable=True, unique=True, index=True)
 
     venues = relationship("Venue", back_populates="owner")
     communities = relationship("Community", secondary=community_members, back_populates="members")

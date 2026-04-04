@@ -139,6 +139,10 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class GoogleLoginRequest(BaseModel):
+    credential: str  # Google ID token from GSI popup
+
+
 class BoraReactionOut(BaseModel):
     event_id: int
     count: int

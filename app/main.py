@@ -27,6 +27,7 @@ def _ensure_indexes():
     migrations = [
         "ALTER TABLE users ADD COLUMN reset_token VARCHAR UNIQUE",
         "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN google_id VARCHAR UNIQUE",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:
