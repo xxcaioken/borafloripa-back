@@ -63,6 +63,7 @@ def get_feed(
     q: Optional[str] = None,
     category: Optional[str] = None,
     neighborhood: Optional[str] = None,
+    venue_id: Optional[int] = None,
     open_now: bool = False,
     accessible: bool = False,
     temporary: bool = False,
@@ -104,6 +105,8 @@ def get_feed(
         query = query.filter(models.Venue.wheelchair == True)
     if neighborhood:
         query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
+    if venue_id:
+        query = query.filter(models.Event.venue_id == venue_id)
 
     if sort == "date":
         query = query.order_by(models.Event.date.asc())
@@ -156,7 +159,26 @@ def get_venues(
         query = query.filter(models.Venue.category == category)
     if neighborhood:
         query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
-    return query.order_by(models.Venue.name).all()
+    venues = query.order_by(models.Venue.name).all()
+    venue_ids = [v.id for v in venues]
+    counts = _get_checkin_counts(db, venue_ids)
+    result = []
+    for v in venues:
+        out = schemas.VenueOut.model_validate(v)
+        out.checkin_count = counts.get(v.id, 0)
+        result.append(out)
+    return result
+
+
+@router.get("/venues/{venue_id}", response_model=schemas.VenueOut)
+def get_venue(venue_id: int, db: Session = Depends(get_db)):
+    venue = db.query(models.Venue).filter(models.Venue.id == venue_id).first()
+    if not venue:
+        raise HTTPException(status_code=404, detail="Local não encontrado")
+    counts = _get_checkin_counts(db, [venue.id])
+    out = schemas.VenueOut.model_validate(venue)
+    out.checkin_count = counts.get(venue.id, 0)
+    return out
 
 
 @router.get("/new-venues", response_model=List[schemas.VenueOut])
