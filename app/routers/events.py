@@ -68,6 +68,7 @@ def get_feed(
     accessible: bool = False,
     temporary: bool = False,
     today: bool = False,
+    free: bool = False,
     sort: Optional[str] = None,  # "date" | "popular" | "featured" (default: featured+date)
     limit: int = 20,
     offset: int = 0,
@@ -107,6 +108,15 @@ def get_feed(
         query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
     if venue_id:
         query = query.filter(models.Event.venue_id == venue_id)
+    if free:
+        query = query.filter(
+            (models.Event.price_info == None) |  # noqa: E711
+            models.Event.price_info.ilike('%grát%') |
+            models.Event.price_info.ilike('%gratuita%') |
+            models.Event.price_info.ilike('%free%') |
+            (models.Event.price_info == '0') |
+            (models.Event.price_info == 'R$ 0')
+        )
 
     if sort == "date":
         query = query.order_by(models.Event.date.asc())
