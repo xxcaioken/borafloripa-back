@@ -146,12 +146,17 @@ def get_venues(
     city: str = "Florianópolis",
     q: Optional[str] = None,
     category: Optional[str] = None,
+    neighborhood: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Venue).filter(models.Venue.city == city)
     if q:
         query = query.filter(models.Venue.name.ilike(f"%{q}%"))
-    return query.order_by(models.Venue.name).all()
+    if category:
+        query = query.filter(models.Venue.category == category)
+    if neighborhood:
+        query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
+    return query.order_by(models.Venue.checkin_count.desc(), models.Venue.name).all()
 
 
 @router.get("/new-venues", response_model=List[schemas.VenueOut])
