@@ -130,6 +130,15 @@ class Token(BaseModel):
     user: UserOut
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class BoraReactionOut(BaseModel):
     event_id: int
     count: int

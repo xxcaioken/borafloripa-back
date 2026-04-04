@@ -38,6 +38,8 @@ class User(Base):
     # Preferências do onboarding (salvas após cadastro)
     pref_music = Column(String)   # JSON: ["funk","eletronico",...]
     pref_vibes = Column(String)   # JSON: ["rooftop","pet-friendly",...]
+    reset_token = Column(String, nullable=True, unique=True, index=True)
+    reset_token_expires = Column(DateTime, nullable=True)
 
     venues = relationship("Venue", back_populates="owner")
     communities = relationship("Community", secondary=community_members, back_populates="members")

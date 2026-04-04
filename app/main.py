@@ -32,6 +32,18 @@ def _ensure_indexes():
                 pass  # index may already exist under a different name
         conn.commit()
 
+    # Migrate new columns (safe — wrapped in try/except per statement)
+    migrations = [
+        "ALTER TABLE users ADD COLUMN reset_token VARCHAR UNIQUE",
+        "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP",
+    ]
+    for stmt in migrations:
+        try:
+            conn.execute(sa_text(stmt))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
 
 try:
     _ensure_indexes()

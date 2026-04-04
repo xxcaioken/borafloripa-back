@@ -1,4 +1,8 @@
 import os
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -7,6 +11,42 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app import models, schemas
 from app.database import get_db
+
+SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.sendgrid.net")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER     = os.getenv("SMTP_USER", "apikey")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SENDER_EMAIL  = os.getenv("SENDER_EMAIL", "noreply@borafloripa.com")
+FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:5173")
+RESET_EXPIRE_HOURS = 1
+
+
+def _send_reset_email(to_email: str, token: str):
+    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Redefinir sua senha — Bora Floripa"
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = to_email
+    msg.attach(MIMEText(
+        f"Clique no link para redefinir sua senha:\n{reset_link}\n\nExpira em 1 hora.",
+        "plain"
+    ))
+    msg.attach(MIMEText(f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+      <h2 style="color:#00e676">Bora Floripa</h2>
+      <p>Recebemos uma solicitação para redefinir a senha da sua conta.</p>
+      <a href="{reset_link}" style="display:inline-block;background:#00e676;color:#000;
+         padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;margin:16px 0">
+        Redefinir senha
+      </a>
+      <p style="color:#888;font-size:13px">O link expira em 1 hora. Se não foi você, ignore este email.</p>
+    </div>
+    """, "html"))
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -81,6 +121,37 @@ def me(current_user=Depends(get_current_user)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Não autenticado")
     return current_user
+
+
+@router.post("/forgot-password")
+def forgot_password(body: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == body.email).first()
+    # Sempre 200 — não revela se o email existe (proteção contra enumeração)
+    if user:
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=RESET_EXPIRE_HOURS)
+        db.commit()
+        try:
+            _send_reset_email(user.email, token)
+        except Exception as e:
+            print(f"[EMAIL ERROR] {e}")
+    return {"message": "Se este email estiver cadastrado, você receberá um link em breve."}
+
+
+@router.post("/reset-password")
+def reset_password(body: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(
+        models.User.reset_token == body.token,
+        models.User.reset_token_expires > datetime.utcnow(),
+    ).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Link inválido ou expirado.")
+    user.hashed_password = hash_password(body.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    db.commit()
+    return {"message": "Senha redefinida com sucesso."}
 
 
 @router.put("/me/preferences", response_model=schemas.UserOut)
