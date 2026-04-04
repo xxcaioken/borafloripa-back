@@ -24,25 +24,17 @@ def _ensure_indexes():
         "CREATE INDEX IF NOT EXISTS ix_user_followed_venues_user ON user_followed_venues (user_id)",
         "CREATE INDEX IF NOT EXISTS ix_user_saved_events_user ON user_saved_events (user_id)",
     ]
-    with database.engine.connect() as conn:
-        for stmt in stmts:
-            try:
-                conn.execute(sa_text(stmt))
-            except Exception:
-                pass  # index may already exist under a different name
-        conn.commit()
-
-    # Migrate new columns (safe — wrapped in try/except per statement)
     migrations = [
         "ALTER TABLE users ADD COLUMN reset_token VARCHAR UNIQUE",
         "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP",
     ]
-    for stmt in migrations:
-        try:
-            conn.execute(sa_text(stmt))
-            conn.commit()
-        except Exception:
-            conn.rollback()
+    with database.engine.connect() as conn:
+        for stmt in stmts + migrations:
+            try:
+                conn.execute(sa_text(stmt))
+            except Exception:
+                conn.rollback()
+        conn.commit()
 
 
 try:

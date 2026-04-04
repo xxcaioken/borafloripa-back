@@ -28,19 +28,18 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy via Kudu (triggers Oryx build)
-        run: |
-          az webapp deployment source config-zip \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa \
-            --src deploy.zip
-
-      - name: Set startup command & restart
+      - name: Set startup command
         run: |
           az webapp config set \
             --name bora-floripa-api \
             --resource-group rg-borafloripa \
             --startup-file "bash /home/site/wwwroot/startup.sh"
-          az webapp restart \
+
+      - name: Deploy
+        run: |
+          az webapp deploy \
             --name bora-floripa-api \
-            --resource-group rg-borafloripa
+            --resource-group rg-borafloripa \
+            --src-path deploy.zip \
+            --type zip \
+            --async true
