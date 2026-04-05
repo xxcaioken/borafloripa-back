@@ -153,7 +153,38 @@ class Community(Base):
     members = relationship("User", secondary=community_members, back_populates="communities")
 
 
+class Review(Base):
+    """Avaliação de venue pelo usuário (1-5 estrelas + texto)"""
+    __tablename__ = "reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)          # 1-5
+    text = Column(String(280), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", backref="reviews")
+    venue = relationship("Venue", backref="reviews")
+
+
+class Notification(Base):
+    """Notificação in-app para o usuário"""
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    type = Column(String, nullable=False)              # 'new_event' | 'checkin_milestone' | 'system'
+    title = Column(String, nullable=False)
+    body = Column(String, nullable=False)
+    url = Column(String, nullable=True)                # rota interna (ex: /evento/42)
+    read = Column(Boolean, default=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", backref="notifications")
+
+
 # Composite indexes for common query patterns
 Index('ix_bora_session_event', BoraReaction.session_id, BoraReaction.event_id, unique=True)
 Index('ix_checkin_venue_time', Checkin.venue_id, Checkin.created_at)
 Index('ix_event_featured_date', Event.is_featured, Event.date)
+Index('ix_review_user_venue', Review.user_id, Review.venue_id, unique=True)
+Index('ix_notification_user_read', Notification.user_id, Notification.read)

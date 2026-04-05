@@ -143,6 +143,33 @@ class GoogleLoginRequest(BaseModel):
     credential: str  # Google ID token from GSI popup
 
 
+class ReviewCreate(BaseModel):
+    rating: int          # 1-5
+    text: Optional[str] = None
+
+
+class ReviewOut(BaseModel):
+    id: int
+    rating: int
+    text: Optional[str]
+    created_at: datetime
+    user_name: str       # populated manually
+    class Config:
+        from_attributes = True
+
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    title: str
+    body: str
+    url: Optional[str]
+    read: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+
 class BoraReactionOut(BaseModel):
     event_id: int
     count: int

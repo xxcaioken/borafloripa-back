@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text as sa_text
 from app import models, database
-from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes, follows, search, admin
+from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes, follows, search, admin, reviews, notifications
 from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
@@ -28,6 +28,12 @@ def _ensure_indexes():
         "ALTER TABLE users ADD COLUMN reset_token VARCHAR UNIQUE",
         "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP",
         "ALTER TABLE users ADD COLUMN google_id VARCHAR UNIQUE",
+        # Reviews + Notifications (2026-04-05)
+        "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), venue_id INTEGER NOT NULL REFERENCES venues(id), rating INTEGER NOT NULL, text VARCHAR(280), created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_review_user_venue ON reviews (user_id, venue_id)",
+        "CREATE INDEX IF NOT EXISTS ix_review_venue_id ON reviews (venue_id)",
+        "CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), type VARCHAR NOT NULL, title VARCHAR NOT NULL, body VARCHAR NOT NULL, url VARCHAR, read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE INDEX IF NOT EXISTS ix_notification_user_read ON notifications (user_id, read)",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:
@@ -67,6 +73,8 @@ app.include_router(vibes.router)
 app.include_router(follows.router)
 app.include_router(search.router)
 app.include_router(admin.router)
+app.include_router(reviews.router)
+app.include_router(notifications.router)
 
 @app.get("/health")
 def health():

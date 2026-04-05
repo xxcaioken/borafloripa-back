@@ -101,9 +101,7 @@ def _send_push(endpoint: str, p256dh: str, auth: str, title: str, body: str, url
 
 
 def notify_venue_followers(db: Session, venue_id: int, title: str, body: str, url: str = "/") -> None:
-    """Envia push para todos os seguidores de um venue que têm subscription ativa."""
-    if not VAPID_PRIVATE_KEY:
-        return
+    """Envia push + notificação in-app para todos os seguidores de um venue."""
     follower_ids = (
         db.query(models.user_followed_venues.c.user_id)
         .filter(models.user_followed_venues.c.venue_id == venue_id)
@@ -112,11 +110,20 @@ def notify_venue_followers(db: Session, venue_id: int, title: str, body: str, ur
     if not follower_ids:
         return
     user_ids = [r[0] for r in follower_ids]
-    subs = db.query(models.PushSubscription).filter(
-        models.PushSubscription.user_id.in_(user_ids)
-    ).all()
-    for sub in subs:
-        _send_push(sub.endpoint, sub.p256dh, sub.auth, title, body, url)
+
+    # In-app notifications (sempre, independente de VAPID)
+    for uid in user_ids:
+        n = models.Notification(user_id=uid, type="new_event", title=title, body=body, url=url)
+        db.add(n)
+    db.commit()
+
+    # Push notifications (só se VAPID configurado)
+    if VAPID_PRIVATE_KEY:
+        subs = db.query(models.PushSubscription).filter(
+            models.PushSubscription.user_id.in_(user_ids)
+        ).all()
+        for sub in subs:
+            _send_push(sub.endpoint, sub.p256dh, sub.auth, title, body, url)
 
 
 @router.get("/vapid-key")
