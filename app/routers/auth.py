@@ -1,6 +1,9 @@
 import os
+import json as json_mod
 import secrets
 import smtplib
+import urllib.request
+import urllib.error
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -152,6 +155,52 @@ def reset_password(body: schemas.ResetPasswordRequest, db: Session = Depends(get
     user.reset_token_expires = None
     db.commit()
     return {"message": "Senha redefinida com sucesso."}
+
+
+@router.post("/google", response_model=schemas.Token)
+def google_login(body: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
+    """Sign in / register via Google One Tap. Verifies the GSI credential (ID token) with Google."""
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google login não configurado no servidor")
+
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={body.credential}"
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            info = json_mod.loads(resp.read())
+    except urllib.error.HTTPError:
+        raise HTTPException(status_code=400, detail="Token Google inválido")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Não foi possível verificar o token Google")
+
+    if info.get("aud") != GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=400, detail="Token não corresponde a este aplicativo")
+    if info.get("email_verified") not in ("true", True):
+        raise HTTPException(status_code=400, detail="E-mail Google não verificado")
+
+    google_id = info["sub"]
+    email = info["email"]
+    name = info.get("name") or email.split("@")[0]
+
+    # Busca por google_id → fallback por email → cria novo
+    user = db.query(models.User).filter(models.User.google_id == google_id).first()
+    if not user:
+        user = db.query(models.User).filter(models.User.email == email).first()
+    if user:
+        if not user.google_id:
+            user.google_id = google_id
+    else:
+        user = models.User(
+            name=name,
+            email=email,
+            google_id=google_id,
+            hashed_password=None,
+            role="user",
+        )
+        db.add(user)
+    db.commit()
+    db.refresh(user)
+    return schemas.Token(access_token=create_token(user.id), token_type="bearer", user=user)
 
 
 @router.put("/me/preferences", response_model=schemas.UserOut)

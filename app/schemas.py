@@ -47,6 +47,7 @@ class EventOut(BaseModel):
     cover_url: Optional[str] = None
     price_info: Optional[str] = None
     view_count: int = 0
+    recurrence: Optional[str] = None
     venue: VenueOut
     tags: List[TagOut]
     class Config:
@@ -64,7 +65,33 @@ class EventCreate(BaseModel):
     is_temporary: bool = False
     organizers: Optional[str] = None
     price_info: Optional[str] = None
+    cover_url: Optional[str] = None
+    recurrence: Optional[str] = None  # null | 'weekly' | 'biweekly' | 'monthly'
     tag_ids: List[int] = []
+
+
+class CouponCreate(BaseModel):
+    code: str
+    description: str
+    discount_pct: int  # 0-100
+    community_id: Optional[int] = None
+    max_uses: int = 100
+    expires_at: Optional[datetime] = None
+
+
+class CouponOut(BaseModel):
+    id: int
+    code: str
+    description: str
+    discount_pct: int
+    max_uses: int
+    used_count: int
+    expires_at: Optional[datetime]
+    active: bool
+    community_id: Optional[int]
+    venue_id: int
+    class Config:
+        from_attributes = True
 
 
 class VenueCreate(BaseModel):
@@ -137,6 +164,37 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str  # Google ID token from GSI popup
+
+
+class ReviewCreate(BaseModel):
+    rating: int          # 1-5
+    text: Optional[str] = None
+
+
+class ReviewOut(BaseModel):
+    id: int
+    rating: int
+    text: Optional[str]
+    created_at: datetime
+    user_name: str       # populated manually
+    class Config:
+        from_attributes = True
+
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    title: str
+    body: str
+    url: Optional[str]
+    read: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
 
 
 class BoraReactionOut(BaseModel):

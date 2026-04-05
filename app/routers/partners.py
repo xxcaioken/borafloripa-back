@@ -80,11 +80,27 @@ def create_event(
         is_temporary=payload.is_temporary,
         organizers=payload.organizers,
         price_info=payload.price_info,
+        cover_url=payload.cover_url,
+        recurrence=payload.recurrence,
         tags=tags,
     )
     db.add(event)
     db.commit()
     db.refresh(event)
+
+    # Push notification para seguidores do venue
+    try:
+        from app.routers.follows import notify_venue_followers
+        notify_venue_followers(
+            db,
+            venue_id=payload.venue_id,
+            title=f"🎉 {event.title}",
+            body=f"Novo evento em {venue.name}",
+            url=f"/evento/{event.id}",
+        )
+    except Exception as _push_err:
+        print(f"[PUSH] notify error: {_push_err}")
+
     return event
 
 
@@ -112,6 +128,8 @@ def update_event(
     event.is_temporary = payload.is_temporary
     event.organizers = payload.organizers
     event.price_info = payload.price_info
+    event.cover_url = payload.cover_url
+    event.recurrence = payload.recurrence
     event.tags = db.query(models.Tag).filter(models.Tag.id.in_(payload.tag_ids)).all()
     db.commit()
     db.refresh(event)

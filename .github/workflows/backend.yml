@@ -6,41 +6,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Package source
+      # Mesma versão do runtime no Azure (Python 3.11)
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # Instala dependências no GitHub (CPU gratuita e ilimitada)
+      # O Azure apenas descompacta — nunca roda pip
+      - name: Install dependencies into bundle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt \
+            --target=".python_packages/lib/site-packages" \
+            --no-compile \
+            --quiet
+
+      # Zipa código + pacotes já instalados
+      # Azure vai encontrar as libs via PYTHONPATH (configurar no portal)
+      - name: Package application
         run: |
           zip -r deploy.zip . \
             --exclude ".git/*" \
             --exclude "venv/*" \
-            --exclude ".packages/*" \
             --exclude "*.db" \
             --exclude "__pycache__/*" \
             --exclude "*.pyc" \
-            --exclude ".env"
+            --exclude "*.pyo" \
+            --exclude ".env" \
+            --exclude ".env.*" \
+            --exclude "tests/*" \
+            --exclude "*.md"
 
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy via Kudu (triggers Oryx build)
-        run: |
-          az webapp deployment source config-zip \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa \
-            --src deploy.zip
-
-      - name: Set startup command & restart
-        run: |
-          az webapp config set \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa \
-            --startup-file "bash /home/site/wwwroot/startup.sh"
-          az webapp restart \
-            --name bora-floripa-api \
-            --resource-group rg-borafloripa
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: bora-floripa-api
+          package: deploy.zip
+          startup-command: 'bash /home/site/wwwroot/startup.sh'
