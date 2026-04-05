@@ -59,6 +59,7 @@ app/
 | `PushSubscription` | id, user_id, endpoint, p256dh, auth |
 | `Review` | id, user_id, venue_id, rating (1-5), text (280), created_at — unique (user_id, venue_id) |
 | `Notification` | id, user_id, type, title, body, url, read, created_at |
+| `Coupon` | id, code (unique), description, discount_pct, venue_id, community_id, max_uses, used_count, expires_at, active |
 
 **Tabelas de associação:** `event_tags`, `community_members`, `user_saved_events`, `user_followed_venues`
 
@@ -184,18 +185,26 @@ notifications: 0  (nova tabela)
 - Follow venues + push notifications (pywebpush)
 - Param `free=true` no feed de eventos
 
-### Sessão 3 (2026-04-05) — atual
+### Sessão 3 (2026-04-05)
 - `Review` model + `reviews.py` router
 - `Notification` model + `notifications.py` router
 - `notify_venue_followers` agora cria notificações in-app antes de tentar push
 - Migrations DDL em `_ensure_indexes()` para ambas as tabelas
 
+### Sessão 4 (2026-04-05) — atual
+- `Event.recurrence` column (`weekly | biweekly | monthly | null`)
+- `Coupon` model: code, discount_pct, venue_id, community_id, max_uses, used_count, expires_at, active
+- `routers/coupons.py`: CRUD de cupons + redeem endpoint
+- `routers/partners.py`: create/update_event agora passam `cover_url` e `recurrence`
+- `schemas.py`: `EventCreate` e `EventOut` com `cover_url` e `recurrence`; `CouponCreate`/`CouponOut`
+- Migrations: `ALTER TABLE events ADD COLUMN recurrence`, `cover_url`, `CREATE TABLE coupons`
+
 ---
 
 ## Próximos passos recomendados
 
-1. **Ativar push**: gerar VAPID keys, colocar no Azure
-2. **Ativar Google login**: criar OAuth client no GCP
-3. **Form de evento no PartnerDashboard**: back já tem POST/PUT/DELETE em `/api/partners/events`
-4. **Eventos recorrentes**: campo `recurrence VARCHAR` no Event, endpoint gera instâncias semanais
-5. **Reexecutar scraper**: 0/127 venues com horários — rodar em dia útil
+1. **Ativar push**: gerar VAPID keys, colocar no Azure (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`)
+2. **Ativar Google login**: criar OAuth client no GCP, colocar `GOOGLE_CLIENT_ID` no Azure
+3. **Instâncias recorrentes**: criar job/endpoint que gera próximas ocorrências de eventos com `recurrence != null`
+4. **Reexecutar scraper**: 0/127 venues com horários — rodar em dia útil
+5. **Upload de imagem**: hoje cover_url aceita URL externa; storage (Cloudflare R2) para upload real
