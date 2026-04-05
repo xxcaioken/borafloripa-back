@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text as sa_text
 from app import models, database
-from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes, follows, search, admin, reviews, notifications
+from app.routers import events, partners, auth, checkins, communities, bora, saved, vibes, follows, search, admin, reviews, notifications, coupons
 from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
@@ -34,6 +34,13 @@ def _ensure_indexes():
         "CREATE INDEX IF NOT EXISTS ix_review_venue_id ON reviews (venue_id)",
         "CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), type VARCHAR NOT NULL, title VARCHAR NOT NULL, body VARCHAR NOT NULL, url VARCHAR, read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())",
         "CREATE INDEX IF NOT EXISTS ix_notification_user_read ON notifications (user_id, read)",
+        # Events: novos campos (2026-04-05)
+        "ALTER TABLE events ADD COLUMN recurrence VARCHAR",
+        "ALTER TABLE events ADD COLUMN cover_url VARCHAR",
+        # Coupons (2026-04-05)
+        "CREATE TABLE IF NOT EXISTS coupons (id SERIAL PRIMARY KEY, code VARCHAR NOT NULL UNIQUE, description VARCHAR NOT NULL, discount_pct INTEGER NOT NULL, venue_id INTEGER NOT NULL REFERENCES venues(id), community_id INTEGER REFERENCES communities(id), max_uses INTEGER DEFAULT 100, used_count INTEGER DEFAULT 0, expires_at TIMESTAMP, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE INDEX IF NOT EXISTS ix_coupon_code ON coupons (code)",
+        "CREATE INDEX IF NOT EXISTS ix_coupon_community ON coupons (community_id, active)",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:
@@ -75,6 +82,7 @@ app.include_router(search.router)
 app.include_router(admin.router)
 app.include_router(reviews.router)
 app.include_router(notifications.router)
+app.include_router(coupons.router)
 
 @app.get("/health")
 def health():

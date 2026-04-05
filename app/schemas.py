@@ -47,6 +47,7 @@ class EventOut(BaseModel):
     cover_url: Optional[str] = None
     price_info: Optional[str] = None
     view_count: int = 0
+    recurrence: Optional[str] = None
     venue: VenueOut
     tags: List[TagOut]
     class Config:
@@ -64,7 +65,33 @@ class EventCreate(BaseModel):
     is_temporary: bool = False
     organizers: Optional[str] = None
     price_info: Optional[str] = None
+    cover_url: Optional[str] = None
+    recurrence: Optional[str] = None  # null | 'weekly' | 'biweekly' | 'monthly'
     tag_ids: List[int] = []
+
+
+class CouponCreate(BaseModel):
+    code: str
+    description: str
+    discount_pct: int  # 0-100
+    community_id: Optional[int] = None
+    max_uses: int = 100
+    expires_at: Optional[datetime] = None
+
+
+class CouponOut(BaseModel):
+    id: int
+    code: str
+    description: str
+    discount_pct: int
+    max_uses: int
+    used_count: int
+    expires_at: Optional[datetime]
+    active: bool
+    community_id: Optional[int]
+    venue_id: int
+    class Config:
+        from_attributes = True
 
 
 class VenueCreate(BaseModel):

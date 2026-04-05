@@ -101,6 +101,7 @@ class Event(Base):
     cover_url = Column(String)   # #8 foto de capa do evento
     price_info = Column(String)  # ex: "Entrada: R$25 / Open bar: R$60"
     view_count = Column(Integer, default=0)  # contador de visualizações do detalhe
+    recurrence = Column(String, nullable=True)  # null | 'weekly' | 'biweekly' | 'monthly'
 
     venue = relationship("Venue", back_populates="events")
     tags = relationship("Tag", secondary=event_tags_association, back_populates="events")
@@ -151,6 +152,25 @@ class Community(Base):
     discount_code = Column(String)   # código de desconto para membros
 
     members = relationship("User", secondary=community_members, back_populates="communities")
+
+
+class Coupon(Base):
+    """Cupom de desconto gerado por parceiro para membros de uma comunidade"""
+    __tablename__ = "coupons"
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, nullable=False, unique=True, index=True)
+    description = Column(String, nullable=False)       # "20% off no bar da galera"
+    discount_pct = Column(Integer, nullable=False)     # 0-100
+    venue_id = Column(Integer, ForeignKey("venues.id"), nullable=False, index=True)
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=True, index=True)  # null = qualquer membro
+    max_uses = Column(Integer, default=100)
+    used_count = Column(Integer, default=0)
+    expires_at = Column(DateTime, nullable=True)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    venue = relationship("Venue", backref="coupons")
+    community = relationship("Community", backref="coupons")
 
 
 class Review(Base):

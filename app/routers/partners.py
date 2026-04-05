@@ -80,6 +80,8 @@ def create_event(
         is_temporary=payload.is_temporary,
         organizers=payload.organizers,
         price_info=payload.price_info,
+        cover_url=payload.cover_url,
+        recurrence=payload.recurrence,
         tags=tags,
     )
     db.add(event)
@@ -126,6 +128,8 @@ def update_event(
     event.is_temporary = payload.is_temporary
     event.organizers = payload.organizers
     event.price_info = payload.price_info
+    event.cover_url = payload.cover_url
+    event.recurrence = payload.recurrence
     event.tags = db.query(models.Tag).filter(models.Tag.id.in_(payload.tag_ids)).all()
     db.commit()
     db.refresh(event)
