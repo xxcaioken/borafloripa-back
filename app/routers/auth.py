@@ -96,6 +96,10 @@ def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
         role="user",
         pref_music=payload.pref_music,
         pref_vibes=payload.pref_vibes,
+        display_name=payload.display_name,
+        neighborhood=payload.neighborhood,
+        age_range=payload.age_range,
+        onboarding_completed=False,
     )
     db.add(user)
     db.commit()
@@ -216,6 +220,51 @@ def update_preferences(
         current_user.pref_music = pref_music
     if pref_vibes is not None:
         current_user.pref_vibes = pref_vibes
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.patch("/me/profile", response_model=schemas.UserOut)
+def update_profile(
+    payload: schemas.UserProfileUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Atualiza campos de perfil: display_name, neighborhood, age_range, preferências musicais."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    if payload.display_name is not None:
+        current_user.display_name = payload.display_name
+    if payload.neighborhood is not None:
+        current_user.neighborhood = payload.neighborhood
+    if payload.age_range is not None:
+        current_user.age_range = payload.age_range
+    if payload.pref_music is not None:
+        current_user.pref_music = payload.pref_music
+    if payload.pref_vibes is not None:
+        current_user.pref_vibes = payload.pref_vibes
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/me/onboarding", response_model=schemas.UserOut)
+def complete_onboarding(
+    payload: schemas.UserProfileUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Marca onboarding como concluído e salva preferências coletadas."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    current_user.onboarding_completed = True
+    if payload.pref_music is not None:
+        current_user.pref_music = payload.pref_music
+    if payload.pref_vibes is not None:
+        current_user.pref_vibes = payload.pref_vibes
+    if payload.neighborhood is not None:
+        current_user.neighborhood = payload.neighborhood
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -133,6 +133,9 @@ class UserCreate(BaseModel):
     password: str
     pref_music: Optional[str] = None
     pref_vibes: Optional[str] = None
+    display_name: Optional[str] = None
+    neighborhood: Optional[str] = None
+    age_range: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -147,8 +150,20 @@ class UserOut(BaseModel):
     role: str
     pref_music: Optional[str]
     pref_vibes: Optional[str]
+    onboarding_completed: bool = False
+    display_name: Optional[str] = None
+    neighborhood: Optional[str] = None
+    age_range: Optional[str] = None
     class Config:
         from_attributes = True
+
+
+class UserProfileUpdate(BaseModel):
+    display_name: Optional[str] = None
+    neighborhood: Optional[str] = None
+    age_range: Optional[str] = None
+    pref_music: Optional[str] = None
+    pref_vibes: Optional[str] = None
 
 
 class Token(BaseModel):
