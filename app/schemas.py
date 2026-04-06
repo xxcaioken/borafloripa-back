@@ -24,6 +24,7 @@ class VenueOut(BaseModel):
     category: Optional[str] = 'bar'
     is_new: bool
     logo_url: Optional[str] = None
+    pet_friendly: bool = False
     wheelchair: bool
     hearing_loop: bool
     visual_aid: bool
@@ -103,6 +104,7 @@ class VenueCreate(BaseModel):
     instagram: Optional[str] = None
     whatsapp: Optional[str] = None
     hours: Optional[str] = None
+    pet_friendly: bool = False
     wheelchair: bool = False
     hearing_loop: bool = False
     visual_aid: bool = False
