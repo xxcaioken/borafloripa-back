@@ -53,6 +53,12 @@ class User(Base):
     reset_token = Column(String, nullable=True, unique=True, index=True)
     reset_token_expires = Column(DateTime, nullable=True)
     google_id = Column(String, nullable=True, unique=True, index=True)
+    # Onboarding
+    onboarding_completed = Column(Boolean, default=False)
+    # Perfil enriquecido
+    display_name = Column(String, nullable=True)        # nome de exibição (apelido)
+    neighborhood = Column(String, nullable=True)        # bairro que mais frequenta
+    age_range = Column(String, nullable=True)           # '18-24' | '25-34' | '35-44' | '45+'
 
     venues = relationship("Venue", back_populates="owner")
     communities = relationship("Community", secondary=community_members, back_populates="members")

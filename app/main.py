@@ -41,6 +41,11 @@ def _ensure_indexes():
         "CREATE TABLE IF NOT EXISTS coupons (id SERIAL PRIMARY KEY, code VARCHAR NOT NULL UNIQUE, description VARCHAR NOT NULL, discount_pct INTEGER NOT NULL, venue_id INTEGER NOT NULL REFERENCES venues(id), community_id INTEGER REFERENCES communities(id), max_uses INTEGER DEFAULT 100, used_count INTEGER DEFAULT 0, expires_at TIMESTAMP, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
         "CREATE INDEX IF NOT EXISTS ix_coupon_code ON coupons (code)",
         "CREATE INDEX IF NOT EXISTS ix_coupon_community ON coupons (community_id, active)",
+        # Onboarding + perfil enriquecido (2026-04-06)
+        "ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN display_name VARCHAR",
+        "ALTER TABLE users ADD COLUMN neighborhood VARCHAR",
+        "ALTER TABLE users ADD COLUMN age_range VARCHAR",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:
