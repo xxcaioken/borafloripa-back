@@ -265,6 +265,8 @@ def complete_onboarding(
         current_user.pref_vibes = payload.pref_vibes
     if payload.neighborhood is not None:
         current_user.neighborhood = payload.neighborhood
+    if payload.age_range is not None:
+        current_user.age_range = payload.age_range
     db.commit()
     db.refresh(current_user)
     return current_user
