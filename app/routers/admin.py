@@ -73,6 +73,16 @@ def _normalize_category(raw: Optional[str]) -> str:
     return CATEGORY_MAP.get(lower, raw if raw in VALID_CATEGORIES else "bar")
 
 
+def _extract_neighborhood(address: Optional[str]) -> Optional[str]:
+    """Extrai bairro de endereço no formato Google Maps: "Rua X - Bairro, Cidade - UF"."""
+    if not address or ' - ' not in address:
+        return None
+    after_dash = address.split(' - ', 1)[1]
+    bairro = after_dash.split(',')[0].strip()
+    _ignore = {'florianópolis', 'florianopolis', 'sc', 'brasil', 'brazil', ''}
+    return bairro if bairro.lower() not in _ignore else None
+
+
 def _clean_instagram(raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None
@@ -134,6 +144,10 @@ def bulk_import_venues(
                     venue.hours = item.hours;    changed = True
                 if not venue.address and item.address:
                     venue.address = item.address; changed = True
+                if not venue.neighborhood and item.address:
+                    nb = _extract_neighborhood(item.address)
+                    if nb:
+                        venue.neighborhood = nb; changed = True
                 if not venue.instagram and instagram:
                     venue.instagram = instagram;  changed = True
                 if not venue.whatsapp and item.whatsapp:
@@ -157,6 +171,7 @@ def bulk_import_venues(
                     lat=item.lat,
                     lng=item.lng,
                     address=item.address,
+                    neighborhood=_extract_neighborhood(item.address),
                     instagram=instagram,
                     whatsapp=item.whatsapp,
                     hours=item.hours,
@@ -210,6 +225,10 @@ def enrich_venues(
             venue.hours = item.hours; changed = True
         if not venue.address and item.address:
             venue.address = item.address; changed = True
+        if not venue.neighborhood and item.address:
+            nb = _extract_neighborhood(item.address)
+            if nb:
+                venue.neighborhood = nb; changed = True
         if not venue.instagram and item.instagram:
             venue.instagram = _clean_instagram(item.instagram); changed = True
         if not venue.whatsapp and item.whatsapp:

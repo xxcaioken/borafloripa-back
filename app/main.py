@@ -47,6 +47,8 @@ def _ensure_indexes():
         "ALTER TABLE venues ADD COLUMN pet_friendly BOOLEAN DEFAULT FALSE",
         # Foto de capa do venue (2026-04-07)
         "ALTER TABLE venues ADD COLUMN photo_url VARCHAR",
+        # Bairro dedicado (2026-04-07) — evita dependência do formato do address
+        "ALTER TABLE venues ADD COLUMN neighborhood VARCHAR",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:
@@ -59,6 +61,53 @@ try:
     _ensure_indexes()
 except Exception as _idx_err:
     print(f"[startup] _ensure_indexes skipped: {_idx_err}")
+
+
+def _extract_neighborhood(address: str | None) -> str | None:
+    """Extrai o bairro de um endereço no formato do Google Maps.
+
+    Ex: "R. Felipe Schmidt, 184 - Centro, Florianópolis - SC, 88010-000" → "Centro"
+        "Av. das Rendeiras, 1 - Lagoa da Conceição, Florianópolis - SC" → "Lagoa da Conceição"
+    """
+    if not address or ' - ' not in address:
+        return None
+    after_dash = address.split(' - ', 1)[1]
+    bairro = after_dash.split(',')[0].strip()
+    _ignore = {'florianópolis', 'florianopolis', 'sc', 'brasil', 'brazil', ''}
+    return bairro if bairro.lower() not in _ignore else None
+
+
+def _backfill_neighborhoods():
+    """Popula neighborhood nas venues que têm address mas neighborhood == NULL."""
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        venues = db.query(models.Venue).filter(
+            models.Venue.neighborhood == None,
+            models.Venue.address != None,
+        ).all()
+        updated = 0
+        for v in venues:
+            nb = _extract_neighborhood(v.address)
+            if nb:
+                v.neighborhood = nb
+                updated += 1
+        if updated:
+            db.commit()
+            print(f"[startup] backfill: {updated} venues com neighborhood populado")
+    except Exception as e:
+        db.rollback()
+        print(f"[startup] backfill neighborhoods skipped: {e}")
+    finally:
+        db.close()
+
+
+try:
+    _backfill_neighborhoods()
+except Exception as _bf_err:
+    print(f"[startup] backfill skipped: {_bf_err}")
+
+
 app = FastAPI(title="Bora Floripa API")
 # Em produção, definir ALLOWED_ORIGINS como CSV (ex: "https://bora.azurestaticapps.net")
 _origins_env = os.getenv("ALLOWED_ORIGINS", "")
