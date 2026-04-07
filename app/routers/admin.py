@@ -60,6 +60,7 @@ class EnrichItem(BaseModel):
     instagram: Optional[str] = None
     whatsapp: Optional[str] = None
     logo_url: Optional[str] = None
+    photo_url: Optional[str] = None
     rating: Optional[float] = None
 
 
@@ -215,6 +216,8 @@ def enrich_venues(
             venue.whatsapp = item.whatsapp; changed = True
         if not venue.logo_url and item.logo_url:
             venue.logo_url = item.logo_url; changed = True
+        if not venue.photo_url and item.photo_url:
+            venue.photo_url = item.photo_url; changed = True
 
         if changed:
             updated += 1

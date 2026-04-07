@@ -45,6 +45,8 @@ def _ensure_indexes():
         "ALTER TABLE users ADD COLUMN age_range VARCHAR",
         # Pet friendly (2026-04-06)
         "ALTER TABLE venues ADD COLUMN pet_friendly BOOLEAN DEFAULT FALSE",
+        # Foto de capa do venue (2026-04-07)
+        "ALTER TABLE venues ADD COLUMN photo_url VARCHAR",
     ]
     with database.engine.connect() as conn:
         for stmt in stmts + migrations:

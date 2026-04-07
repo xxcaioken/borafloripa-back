@@ -24,6 +24,7 @@ class VenueOut(BaseModel):
     category: Optional[str] = 'bar'
     is_new: bool
     logo_url: Optional[str] = None
+    photo_url: Optional[str] = None
     pet_friendly: bool = False
     wheelchair: bool
     hearing_loop: bool

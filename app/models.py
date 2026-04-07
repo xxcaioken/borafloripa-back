@@ -80,6 +80,7 @@ class Venue(Base):
     category = Column(String, default="bar")
     is_new = Column(Boolean, default=False)
     logo_url = Column(String)                       # #8 foto do local
+    photo_url = Column(String)                      # foto de capa do venue (scraper)
     # Acessibilidade
     pet_friendly = Column(Boolean, default=False)
     wheelchair = Column(Boolean, default=False)   # rampa/elevador
