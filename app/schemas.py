@@ -18,6 +18,7 @@ class VenueOut(BaseModel):
     lat: float
     lng: float
     address: Optional[str]
+    neighborhood: Optional[str] = None
     instagram: Optional[str]
     whatsapp: Optional[str]
     hours: Optional[str]
