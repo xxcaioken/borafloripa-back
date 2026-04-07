@@ -57,6 +57,7 @@ class EnrichItem(BaseModel):
     city: str = "Florianópolis"
     hours: Optional[str] = None
     address: Optional[str] = None
+    neighborhood: Optional[str] = None
     instagram: Optional[str] = None
     whatsapp: Optional[str] = None
     logo_url: Optional[str] = None
@@ -225,7 +226,9 @@ def enrich_venues(
             venue.hours = item.hours; changed = True
         if not venue.address and item.address:
             venue.address = item.address; changed = True
-        if not venue.neighborhood and item.address:
+        if item.neighborhood and venue.neighborhood != item.neighborhood:
+            venue.neighborhood = item.neighborhood; changed = True
+        elif not venue.neighborhood and item.address:
             nb = _extract_neighborhood(item.address)
             if nb:
                 venue.neighborhood = nb; changed = True

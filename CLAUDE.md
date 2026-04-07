@@ -90,7 +90,14 @@ app/
 
 ---
 
-## Convenções
+## Convenções de branches (Git)
+
+- **`dev` sempre tem tudo de `main`**: ao começar qualquer feature, sincronizar `dev` com `main` antes (`git merge main` em `dev`)
+- **`main` só recebe `dev` quando explicitamente solicitado pelo Pedro** — nunca fazer merge de `dev` → `main` por iniciativa própria
+- Fluxo: `feat/*` → `dev` → (quando Pedro pedir) → `main`
+- Deploy de produção só acontece ao subir para `main`
+
+## Convenções de código
 
 - **Migrations**: sempre via DDL em `_ensure_indexes()` no `main.py` (sem Alembic)
   - Cada statement tem `try/except` + `conn.rollback()` — idempotente
