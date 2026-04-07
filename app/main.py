@@ -143,3 +143,7 @@ def seed():
         db.commit()
     finally:
         db.close()
+
+@app.get("/debug/routes")
+def list_routes():
+    return [{"path": r.path, "methods": list(r.methods)} for r in app.routes]
