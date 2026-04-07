@@ -19,11 +19,17 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      # Testes rodam no runner do GitHub (SQLite in-memory — zero custo, zero deps externos)
+      - name: Run tests
+        run: |
+          pip install --upgrade pip --quiet
+          pip install -r requirements-dev.txt --quiet
+          python -m pytest --tb=short -q
+
       # Instala dependências no GitHub (CPU gratuita e ilimitada)
       # O Azure apenas descompacta — nunca roda pip
       - name: Install dependencies into bundle
         run: |
-          pip install --upgrade pip
           pip install -r requirements.txt \
             --target=".python_packages/lib/site-packages" \
             --no-compile \
