@@ -74,6 +74,7 @@ class Venue(Base):
     lat = Column(Float, nullable=False, default=0.0)
     lng = Column(Float, nullable=False, default=0.0)
     address = Column(String)
+    neighborhood = Column(String)          # bairro extraído do endereço
     instagram = Column(String)
     whatsapp = Column(String)
     hours = Column(String)

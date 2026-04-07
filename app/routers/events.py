@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 import json
@@ -105,7 +105,10 @@ def get_feed(
     if accessible:
         query = query.filter(models.Venue.wheelchair == True)
     if neighborhood:
-        query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
+        query = query.filter(or_(
+            models.Venue.neighborhood.ilike(f"%{neighborhood}%"),
+            models.Venue.address.ilike(f"%{neighborhood}%"),
+        ))
     if venue_id:
         query = query.filter(models.Event.venue_id == venue_id)
     if free:
@@ -170,7 +173,10 @@ def get_venues(
     if category:
         query = query.filter(models.Venue.category == category)
     if neighborhood:
-        query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
+        query = query.filter(or_(
+            models.Venue.neighborhood.ilike(f"%{neighborhood}%"),
+            models.Venue.address.ilike(f"%{neighborhood}%"),
+        ))
     if pet_friendly:
         query = query.filter(models.Venue.pet_friendly == True)
     venues = query.order_by(models.Venue.name).all()
