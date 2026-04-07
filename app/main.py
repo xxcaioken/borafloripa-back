@@ -7,13 +7,10 @@ from app.routers import events, partners, auth, checkins, communities, bora, sav
 from app.routers.auth import hash_password
 from datetime import datetime, timedelta
 import json
-
 try:
     models.Base.metadata.create_all(bind=database.engine)
 except Exception as _e:
     print(f"[startup] create_all warning: {_e}")
-
-
 def _ensure_indexes():
     """Create performance indexes idempotently (safe to run on already-populated DBs)."""
     stmts = [
@@ -56,26 +53,20 @@ def _ensure_indexes():
             except Exception:
                 conn.rollback()
         conn.commit()
-
-
 try:
     _ensure_indexes()
 except Exception as _idx_err:
     print(f"[startup] _ensure_indexes skipped: {_idx_err}")
-
 app = FastAPI(title="Bora Floripa API")
-
 # Em produção, definir ALLOWED_ORIGINS como CSV (ex: "https://bora.azurestaticapps.net")
 _origins_env = os.getenv("ALLOWED_ORIGINS", "")
 allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(auth.router)
 app.include_router(events.router)
 app.include_router(partners.router)
@@ -90,7 +81,6 @@ app.include_router(admin.router)
 app.include_router(reviews.router)
 app.include_router(notifications.router)
 app.include_router(coupons.router)
-
 @app.get("/health")
 def health():
     from sqlalchemy import text as _t
@@ -106,8 +96,6 @@ def health():
         "db": "connected" if db_ok else "error",
         "version": "1.0.0",
     }
-
-
 @app.on_event("startup")
 def seed():
     """Cria apenas usuários de sistema e tags. Venues são importados via scripts/import_venues.py."""
@@ -115,12 +103,10 @@ def seed():
     try:
         if db.query(models.User).first():
             return
-
         admin = models.User(name="Admin", email="admin@borafloripa.com", role="admin",
                            hashed_password=hash_password("admin123"))
         db.add(admin)
         db.commit()
-
         tag_names = [
             "Eletrônico", "Funk", "Pagode", "Sertanejo", "Rock",
             "MPB", "Reggae", "Instagramável", "Pet Friendly", "Rooftop",
@@ -129,7 +115,6 @@ def seed():
         ]
         db.add_all([models.Tag(name=n) for n in tag_names])
         db.commit()
-
         communities_seed = [
             models.Community(tag_name="Eletrônico",  name="Galera do Eletrônico", description="Fãs de música eletrônica e baladas em Floripa",     discount_code="ELETRO10"),
             models.Community(tag_name="Funk",        name="Baile do Funk",        description="Quem curte Funk sabe: a festa é aqui",               discount_code="FUNK15"),
@@ -143,7 +128,3 @@ def seed():
         db.commit()
     finally:
         db.close()
-
-@app.get("/debug/routes")
-def list_routes():
-    return [{"path": r.path, "methods": list(r.methods)} for r in app.routes]
