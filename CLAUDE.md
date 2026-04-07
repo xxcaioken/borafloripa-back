@@ -4,6 +4,31 @@
 
 ---
 
+## ⚠️ Regras críticas — leia antes de qualquer coisa
+
+### Azure — aprovação obrigatória
+**NUNCA criar, modificar ou deletar serviços Azure sem aprovação explícita do Pedro.**
+Isso inclui: Storage Accounts, App Services, planos de serviço, configurações de app settings que impliquem em novos recursos pagos, novos Resource Groups, etc.
+Se uma feature precisar de novo serviço Azure, **descreva o que seria necessário e aguarde aprovação antes de executar qualquer comando Azure CLI ou chamada à management API.**
+
+### Testes — obrigatório a cada feature
+**Toda nova feature deve incluir testes.** Sem exceção.
+
+**Backend (pytest):**
+- Rode com: `source venv/Scripts/activate && python -m pytest` (dentro de `borafloripa-back/`)
+- Novos endpoints → ao menos: (1) sem auth retorna 401, (2) happy path retorna 200 com shape correto, (3) guard de ownership retorna 403 se aplicável
+- Novos modelos/lógica de negócio → test unitário em `tests/`
+
+**Frontend (vitest):**
+- Rode com: `npm test` (dentro de `borafloripa-front/`)
+- Novos componentes → test de render básico em `src/components/*.test.tsx`
+- Novas funções puras em `utils/` → test unitário em `src/utils/*.test.ts`
+- Mudanças nos interceptores de `api.ts` → atualizar `src/services/api.test.ts`
+
+**O que NÃO testar:** mocks de banco que divergem do real, snapshots de UI (ficam obsoletos rápido), testes que só verificam que uma função foi chamada sem testar comportamento observável.
+
+---
+
 ## Stack
 
 | Tech | Versão | Obs |
