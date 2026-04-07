@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
+import os, uuid
 from app import models, schemas
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -253,6 +254,51 @@ def claim_venue(
     if venue.owner_id and venue.owner_id != ADMIN_ID and venue.owner_id != current_user.id:
         raise HTTPException(status_code=409, detail="Venue já tem um dono cadastrado")
     venue.owner_id = current_user.id
+    db.commit()
+    db.refresh(venue)
+    return venue
+
+
+@router.post("/venues/{venue_id}/photo", response_model=schemas.VenueOut)
+async def upload_venue_photo(
+    venue_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(_require_auth),
+):
+    venue = db.query(models.Venue).filter(
+        models.Venue.id == venue_id,
+        models.Venue.owner_id == current_user.id,
+    ).first()
+    if not venue:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+
+    conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+    container = os.environ.get("AZURE_STORAGE_CONTAINER", "venues")
+    if not conn_str:
+        raise HTTPException(status_code=503, detail="Storage não configurado")
+
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "jpg"
+    if ext not in {"jpg", "jpeg", "png", "webp"}:
+        raise HTTPException(status_code=400, detail="Formato inválido. Use jpg, png ou webp.")
+
+    blob_name = f"venue-{venue_id}-{uuid.uuid4().hex[:8]}.{ext}"
+    data = await file.read()
+
+    try:
+        from azure.storage.blob import BlobServiceClient, ContentSettings
+        client = BlobServiceClient.from_connection_string(conn_str)
+        blob = client.get_blob_client(container=container, blob=blob_name)
+        blob.upload_blob(
+            data,
+            overwrite=True,
+            content_settings=ContentSettings(content_type=file.content_type or "image/jpeg"),
+        )
+        photo_url = blob.url
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no upload: {e}")
+
+    venue.photo_url = photo_url
     db.commit()
     db.refresh(venue)
     return venue
