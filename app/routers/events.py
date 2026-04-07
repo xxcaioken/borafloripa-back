@@ -160,6 +160,7 @@ def get_venues(
     q: Optional[str] = None,
     category: Optional[str] = None,
     neighborhood: Optional[str] = None,
+    pet_friendly: bool = False,
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Venue).filter(models.Venue.city == city)
@@ -169,6 +170,8 @@ def get_venues(
         query = query.filter(models.Venue.category == category)
     if neighborhood:
         query = query.filter(models.Venue.address.ilike(f"%{neighborhood}%"))
+    if pet_friendly:
+        query = query.filter(models.Venue.pet_friendly == True)
     venues = query.order_by(models.Venue.name).all()
     venue_ids = [v.id for v in venues]
     counts = _get_checkin_counts(db, venue_ids)

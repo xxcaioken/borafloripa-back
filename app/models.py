@@ -81,6 +81,7 @@ class Venue(Base):
     is_new = Column(Boolean, default=False)
     logo_url = Column(String)                       # #8 foto do local
     # Acessibilidade
+    pet_friendly = Column(Boolean, default=False)
     wheelchair = Column(Boolean, default=False)   # rampa/elevador
     hearing_loop = Column(Boolean, default=False) # loop magnético
     visual_aid = Column(Boolean, default=False)   # cardápio em braille/áudio
